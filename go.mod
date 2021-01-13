@@ -11,7 +11,7 @@ require (
 	github.com/pion/randutil v0.1.0
 	github.com/pion/rtp v1.6.2
 	github.com/pion/webrtc/v3 v3.0.3
-	github.com/rocktan001/goutil v1.6.0 // indirect
+	github.com/rocktan001/goutil v1.6.0
 	github.com/satori/go.uuid v1.2.0
 	golang.org/x/image v0.0.0-20201208152932-35266b937fa6
 )

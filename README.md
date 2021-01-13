@@ -17,7 +17,7 @@
 
 ## Install
 
-`go get -u github.com/rocktan001/webrtc@v1.1.0`
+`go get -u github.com/rocktan001/webrtc@v1.2.0`
 
 ## Usage
 
@@ -33,6 +33,7 @@ import (
 
 	"github.com/pion/webrtc/v3"
 	"github.com/rocktan001/webrtc/mediadevices/pkg/codec/opus" // This is required to use opus audio encoder
+	"github.com/rocktan001/webrtc/mediadevices/pkg/codec/vpx"  // This is required to use h264 video encoder
 	"github.com/rocktan001/webrtc/mediadevices/pkg/codec/x264" // This is required to use h264 video encoder
 	"github.com/rocktan001/webrtc/mediadevices/pkg/prop"
 
@@ -60,6 +61,10 @@ func main() {
 	}
 
 	// Create a new RTCPeerConnection
+	vpxParams, err := vpx.NewVP8Params()
+	// vpxParams, err := vpx.NewVP9Params()
+	vpxParams.BitRate = 1_000_000
+
 	x264Params, err := x264.NewParams()
 	if err != nil {
 		panic(err)
@@ -67,12 +72,13 @@ func main() {
 	x264Params.BitRate = 1_000_000 // 500kbps
 	// x264Params.Preset = x264.PresetUltrafast
 	x264Params.Preset = x264.PresetMedium
+
 	opusParams, err := opus.NewParams()
 	if err != nil {
 		panic(err)
 	}
 	codecSelector := mediadevices.NewCodecSelector(
-		mediadevices.WithVideoEncoders(&x264Params),
+		mediadevices.WithVideoEncoders(&vpxParams, &x264Params),
 		mediadevices.WithAudioEncoders(&opusParams),
 	)
 
@@ -159,7 +165,7 @@ func main() {
 	// Output the answer in base64 so we can paste it in browser
 	// fmt.Println(signal.Encode(*peerConnection.LocalDescription()))
 	goutil.Redis_json_set("remoteSessionDescription", signal.Encode(*peerConnection.LocalDescription()))
-	// fmt.Println(signal.Encode(*peerConnection.LocalDescription()))
+	// fmt.Println(peerConnection.LocalDescription())
 	answer := webrtc.SessionDescription{}
 	// signal.Decode(signal.MustReadStdin(), &offer)
 	goutil.Redis_json_sub("webrtc-start")
@@ -182,13 +188,14 @@ func Bye() {
 
 
 
+
 ```
 
 ## 调试界面 
 http://www.rocktan001.com:63000/
 
 ## 运行本地server
-	cd ${src}/github.com/rocktan01/webrtc/main
+	cd ${src}/github.com/rocktan001/webrtc/main
 	go build server.go
 	go build webrtc-desktop-pion-offer.go
 	./server.exe

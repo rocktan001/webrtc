@@ -2,7 +2,6 @@
 // This package requires libvpx headers and libraries to be built.
 package vpx
 
-// #cgo pkg-config: vpx
 // #include <stdlib.h>
 // #include <vpx/vpx_encoder.h>
 // #include <vpx/vpx_image.h>
