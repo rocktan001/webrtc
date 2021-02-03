@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/pion/webrtc/v3"
+	// "github.com/rocktan001/webrtc/mediadevices/pkg/codec/openh264" // This is required to use openh264 video encoder
 	"github.com/rocktan001/webrtc/mediadevices/pkg/codec/opus" // This is required to use opus audio encoder
-	"github.com/rocktan001/webrtc/mediadevices/pkg/codec/vpx"  // This is required to use h264 video encoder
-	"github.com/rocktan001/webrtc/mediadevices/pkg/codec/x264" // This is required to use h264 video encoder
+	"github.com/rocktan001/webrtc/mediadevices/pkg/codec/vpx"  // This is required to use vpx video encoder
+	// "github.com/rocktan001/webrtc/mediadevices/pkg/codec/x264" // This is required to use h264 video encoder
 	"github.com/rocktan001/webrtc/mediadevices/pkg/prop"
 
 	"github.com/rocktan001/goutil"
@@ -16,6 +17,8 @@ import (
 	_ "github.com/rocktan001/webrtc/mediadevices/pkg/driver/screen"
 	"github.com/rocktan001/webrtc/signal"
 )
+
+var VERSION = "-VP8-2Mbit"
 
 func main() {
 	go Bye()
@@ -31,28 +34,39 @@ func main() {
 				Credential:     "F96AEB124C",
 				CredentialType: webrtc.ICECredentialTypePassword,
 			},
+			{
+				URLs:           []string{"turn:gz01.cn.coturn.menghaocheng.com:3478"},
+				Username:       "menghaocheng",
+				Credential:     "mypasswd",
+				CredentialType: webrtc.ICECredentialTypePassword,
+			},
 		},
 	}
 
 	// Create a new RTCPeerConnection
+	// openh264Params, err := openh264.NewParams()
+	// openh264Params.BitRate = 1_000_000
+
 	vpxParams, err := vpx.NewVP8Params()
 	// vpxParams, err := vpx.NewVP9Params()
-	vpxParams.BitRate = 1_000_000
+	vpxParams.BitRate = 2_000_000
 
-	x264Params, err := x264.NewParams()
-	if err != nil {
-		panic(err)
-	}
-	x264Params.BitRate = 1_000_000 // 500kbps
-	// x264Params.Preset = x264.PresetUltrafast
-	x264Params.Preset = x264.PresetMedium
+	// x264Params, err := x264.NewParams()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// x264Params.BitRate = 4_000_000 // 500kbps
+	// // x264Params.Preset = x264.PresetUltrafast
+	// x264Params.Preset = x264.PresetMedium
 
 	opusParams, err := opus.NewParams()
 	if err != nil {
 		panic(err)
 	}
 	codecSelector := mediadevices.NewCodecSelector(
-		mediadevices.WithVideoEncoders(&vpxParams, &x264Params),
+		// mediadevices.WithVideoEncoders(&x264Params),
+		mediadevices.WithVideoEncoders(&vpxParams),
+		// mediadevices.WithVideoEncoders(&openh264Params, &vpxParams),
 		mediadevices.WithAudioEncoders(&opusParams),
 	)
 
@@ -138,13 +152,15 @@ func main() {
 
 	// Output the answer in base64 so we can paste it in browser
 	// fmt.Println(signal.Encode(*peerConnection.LocalDescription()))
-	goutil.Redis_json_set("remoteSessionDescription", signal.Encode(*peerConnection.LocalDescription()))
-	// fmt.Println(peerConnection.LocalDescription())
+	uuid := goutil.GetPhysicalID() + VERSION
+	goutil.Redis_json_SAdd("webrtc-online", uuid)
+	goutil.Redis_json_set("remoteSessionDescription_"+uuid, signal.Encode(*peerConnection.LocalDescription()))
+	fmt.Println(peerConnection.LocalDescription())
 	answer := webrtc.SessionDescription{}
 	// signal.Decode(signal.MustReadStdin(), &offer)
-	goutil.Redis_json_sub("webrtc-start")
+	goutil.Redis_json_sub("webrtc-start_" + uuid)
 	fmt.Println("webrtc-start")
-	signal.Decode(goutil.Redis_json_get("localDescription"), &answer)
+	signal.Decode(goutil.Redis_json_get("localDescription_"+uuid), &answer)
 	// fmt.Println(answer)
 	peerConnection.SetRemoteDescription(answer)
 
@@ -154,8 +170,10 @@ func main() {
 }
 
 func Bye() {
+	uuid := goutil.GetPhysicalID() + VERSION
 	for {
-		goutil.Redis_json_sub("webrtc-bye")
+		goutil.Redis_json_sub("webrtc-bye_" + uuid)
+		goutil.Redis_json_SRem("webrtc-online", uuid)
 		panic("leave")
 	}
 }
